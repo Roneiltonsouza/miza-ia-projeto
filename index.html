@@ -3,136 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Miza IA - Gerador de Apps</title>
+    <title>Miza IA - Gerador Pro</title>
     <style>
+        /* Estilo Global com Degradê e Efeito Vidro Refletivo */
         body {
             margin: 0;
             padding: 0;
-            font-family: sans-serif;
             height: 100vh;
             background: linear-gradient(135deg, #FF0000 0%, #FFFFFF 50%, #800080 100%);
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
         }
 
-        .glass-card {
-            width: 90%;
-            max-width: 500px;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            text-align: center;
+        .miza-card {
+            width: 92%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.8); 
+            backdrop-filter: blur(12px);
+            border-radius: 25px;
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        input {
-            width: 100%;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 10px;
-            border: 1px solid #ddd;
-            box-sizing: border-box;
-        }
-
-        button#btn-gerar {
+        /* Botão sempre visível e destacado conforme solicitado */
+        #btn-gerar {
             width: 100%;
             background: #800080;
             color: white;
             border: none;
-            padding: 15px;
+            padding: 18px;
             border-radius: 50px;
             font-weight: bold;
+            font-size: 18px;
             cursor: pointer;
-            margin-bottom: 10px;
+            box-shadow: 0 5px 15px rgba(128, 0, 128, 0.4);
+            transition: transform 0.2s ease;
         }
 
-        #preview-container {
+        #btn-gerar:active {
+            transform: scale(0.96);
+        }
+
+        input#prompt {
             width: 100%;
-            height: 300px;
-            background: white;
-            border: 2px solid #800080;
-            border-radius: 10px;
-            margin-top: 10px;
+            padding: 16px;
+            border-radius: 15px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            font-size: 16px;
+            outline: none;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        iframe { width: 100%; height: 100%; border: none; }
+        #output-container {
+            width: 100%;
+            height: 400px;
+            background: white;
+            margin-top: 10px;
+            border: 2px solid #800080;
+            border-radius: 15px;
+            overflow: hidden;
+        }
 
-        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-sec { flex: 1; padding: 10px; border: 1px solid #800080; border-radius: 10px; background: none; color: #800080; cursor: pointer; }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body>
 
-    <div class="glass-card">
-        <h2 style="color: #800080; margin-top: 0;">Miza IA</h2>
-        <input type="text" id="prompt" placeholder="Ex: Cria um Aplicativo O nome miza">
-        <button id="btn-gerar" onclick="executarGeracao()">GERAR APP</button>
-
-        <div id="preview-container">
-            <iframe id="tela"></iframe>
-        </div>
-
-        <div class="btn-row">
-            <button class="btn-sec" onclick="copiar()">Copiar</button>
-            <button class="btn-sec" onclick="baixar()">Baixar</button>
+    <div class="miza-card">
+        <h1 style="color: #800080; text-align: center; margin: 0; font-size: 24px;">Miza IA</h1>
+        <input type="text" id="prompt" placeholder="Digite o que o Miza IA deve criar...">
+        <button id="btn-gerar" onclick="processarIA()">GERAR PROJETO</button>
+        
+        <div id="output-container">
+            <iframe id="tela-preview"></iframe>
         </div>
     </div>
 
     <script type="module">
         import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-        // CHAVE API ATUALIZADA
-        const API_KEY = "AIzaSyATF0fUAFvbSr7qFIMypTgbncKV5etmalw";
+        // Chave API Nova Inserida
+        const API_KEY = "AIzaSyBwOTzTalVGsobmNiPa69kCKIjtiNcYJIA"; 
         const genAI = new GoogleGenerativeAI(API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        let ultimoCodigo = "";
-
-        // Lock de Persistência [cite: 2026-02-26]
+        // Função de Lock: Carrega o último código salvo ao abrir
         window.onload = () => {
-            const salvo = localStorage.getItem('miza_app_code');
-            if(salvo) {
-                ultimoCodigo = salvo;
-                atualizarIframe(salvo);
-            }
+            const salvo = localStorage.getItem('miza_lock_memory');
+            if (salvo) render(salvo);
         };
 
-        window.executarGeracao = async () => {
-            const p = document.getElementById('prompt').value;
+        window.processarIA = async () => {
+            const p = document.getElementById('prompt');
             const b = document.getElementById('btn-gerar');
-            if(!p) return;
+            if(!p.value) return;
 
-            b.innerText = "PROCESSANDO...";
+            b.innerText = "CRIANDO...";
+            b.style.opacity = "0.6";
+
             try {
-                const promptFinal = `Crie um código HTML5 completo (com CSS e JS) para um app chamado Miza que faça: ${p}. Responda apenas com o código puro.`;
-                const result = await model.generateContent(promptFinal);
-                const response = await result.response;
-                ultimoCodigo = response.text().replace(/```html|```/g, '');
+                // Comando otimizado para gerar apenas código puro
+                const result = await model.generateContent("Crie apenas o código HTML5 completo (CSS e JS internos) para: " + p.value + ". Não use explicações ou markdown.");
+                const rawCode = result.response.text().replace(/```html|```/g, '');
                 
-                localStorage.setItem('miza_app_code', ultimoCodigo);
-                atualizarIframe(ultimoCodigo);
+                // Salva permanentemente no Lock do navegador
+                localStorage.setItem('miza_lock_memory', rawCode);
+                render(rawCode);
             } catch (err) {
-                console.error(err);
-                alert("Erro crítico: Verifique se sua chave API permite acesso da sua região atual ou se há restrições de segurança no Google Cloud.");
+                alert("Erro: Verifique sua conexão ou se a chave ainda está propagando no Google.");
             } finally {
-                b.innerText = "GERAR APP";
+                b.innerText = "GERAR PROJETO";
+                b.style.opacity = "1";
             }
         };
 
-        function atualizarIframe(html) {
+        function render(html) {
             const blob = new Blob([html], { type: 'text/html' });
-            document.getElementById('tela').src = URL.createObjectURL(blob);
+            document.getElementById('tela-preview').src = URL.createObjectURL(blob);
         }
-
-        window.copiar = () => { navigator.clipboard.writeText(ultimoCodigo); alert("Copiado!"); };
-        window.baixar = () => {
-            const a = document.createElement('a');
-            a.href = 'data:text/html;charset=utf-8,' + encodeURIComponent(ultimoCodigo);
-            a.download = 'miza_app.html';
-            a.click();
-        };
     </script>
 </body>
 </html>
